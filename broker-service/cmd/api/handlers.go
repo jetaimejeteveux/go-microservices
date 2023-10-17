@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 )
 
@@ -45,27 +46,41 @@ func (app *Config) HandleSubmission(w http.ResponseWriter, r *http.Request) {
 func (app *Config) authenticate(w http.ResponseWriter, a AuthPayload) {
 	data, err := json.MarshalIndent(a, "", "/t")
 	if err != nil {
+		log.Println("err marshalling", err)
 		app.errorJSON(w, err)
+		return
 	}
+
+	log.Println("marshalled data")
 
 	req, err := http.NewRequest("POST", "http://authentication-service/authenticate", bytes.NewBuffer(data))
 	if err != nil {
+		log.Println("Error making request", err)
 		app.errorJSON(w, err)
+		return
 	}
+
+	log.Println("created request")
 
 	client := &http.Client{}
 
 	resp, err := client.Do(req)
 	if err != nil {
+		log.Println("Error calling client", err)
 		app.errorJSON(w, err)
+		return
 	}
 	defer resp.Body.Close()
 
+	log.Println("called client")
+
 	// make sure we get back the correct status code
 	if resp.StatusCode == http.StatusUnauthorized {
+		log.Println("invalid creds")
 		app.errorJSON(w, errors.New(("invalid credentials")))
 		return
 	} else if resp.StatusCode != http.StatusAccepted {
+		log.Println("wrong status of", resp.StatusCode)
 		app.errorJSON(w, errors.New("error calling auth service"))
 		return
 	}
